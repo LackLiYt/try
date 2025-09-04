@@ -1,32 +1,34 @@
+using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
-using Supabase;
-using Postgrest;
-using Microsoft.AspNetCore.Authorization; // 🟢 NEW
+using Microsoft.AspNetCore.Authorization;
 
-namespace YourProject.Controllers;
-
-[ApiController]
-[Route("[controller]")]
-[Authorize] // 🟢 NEW: This attribute protects all endpoints in this controller
-public class ProductsController : ControllerBase
+namespace backend.Controllers
 {
-    private readonly Client _supabase;
-
-    public ProductsController(Client supabase)
+    // This attribute protects the endpoint, requiring a valid JWT.
+    [Authorize]
+    [ApiController]
+    [Route("[controller]")]
+    public class ProductsController : ControllerBase
     {
-        _supabase = supabase;
+        // This is a placeholder that returns a hardcoded list of products.
+        // It does not connect to a database.
+        [HttpGet]
+        public IEnumerable<Product> Get()
+        {
+            return new List<Product>
+            {
+                new Product { Id = 1, Name = "Laptop", Price = 1200.50M },
+                new Product { Id = 2, Name = "Mouse", Price = 25.75M },
+                new Product { Id = 3, Name = "Keyboard", Price = 75.00M }
+            };
+        }
     }
 
-    [HttpGet(Name = "GetProducts")]
-    public async Task<IResult> Get()
+    public class Product
     {
-        var response = await _supabase.From<Product>().Get();
-
-        if (response.Models != null && response.Models.Any())
-        {
-            return Results.Ok(response.Models);
-        }
-
-        return Results.NotFound("No products found.");
+        public int Id { get; set; }
+        public required string Name { get; set; }
+        public decimal Price { get; set; }
     }
 }

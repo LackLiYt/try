@@ -1,103 +1,125 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { signIn, signOut, useSession } from "next-auth/react";
+import { Session } from "next-auth";
+
+// This declaration extends the Session type from NextAuth to include our custom accessToken.
+// This is necessary for TypeScript to know that the property exists.
+declare module "next-auth" {
+  interface Session {
+    accessToken?: string;
+  }
+}
+
+export default function App() {
+  const { data: session, status } = useSession();
+  const [dataFromBackend, setDataFromBackend] = useState<any>(null);
+  const [loadingBackend, setLoadingBackend] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProtectedData = async () => {
+      // Check if session exists and has a user and accessToken before fetching.
+      if (session?.user && session?.accessToken) {
+        setLoadingBackend(true);
+        setError(null);
+        try {
+          // Replace this URL with the actual endpoint of your C# backend API.
+          const response = await fetch("http://localhost:5000/products", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              // Attach the Azure AD access token to the request.
+              "Authorization": `Bearer ${session.accessToken}`
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          setDataFromBackend(data);
+        } catch (e: unknown) {
+          // This block now correctly handles the 'unknown' type for the caught error.
+          if (e instanceof Error) {
+            setError(e.message);
+          } else {
+            setError("An unknown error occurred while fetching data.");
+          }
+        } finally {
+          setLoadingBackend(false);
+        }
+      }
+    };
+
+    fetchProtectedData();
+  }, [session]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <p className="text-white text-xl">Loading...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-900 text-white font-sans">
+      <div className="w-full max-w-2xl p-8 bg-gray-800 rounded-xl shadow-lg">
+        <h1 className="text-4xl font-extrabold text-center mb-6 text-indigo-400">
+          Azure AD & C# Backend
+        </h1>
+        
+        {session?.user ? (
+          <div className="space-y-6 text-center">
+            <p className="text-lg">
+              Welcome, <span className="font-semibold text-green-400">{session.user.name}</span>!
+            </p>
+            <p className="text-sm text-gray-400">
+              You are authenticated with Azure AD.
+            </p>
+            
+            <button
+              onClick={() => signOut()}
+              className="w-full px-6 py-3 font-semibold rounded-lg text-white transition-colors duration-200 bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+            >
+              Sign out
+            </button>
+            
+            <div className="mt-8 border-t border-gray-600 pt-6">
+              <h2 className="text-2xl font-bold text-center mb-4 text-indigo-300">
+                Data from C# Backend
+              </h2>
+              {loadingBackend ? (
+                <p className="text-yellow-400">Loading data...</p>
+              ) : error ? (
+                <div className="p-4 bg-red-900 text-red-300 rounded-lg">
+                  <p>Error fetching data: {error}</p>
+                  <p className="mt-2 text-sm text-red-400">
+                    Make sure your C# backend is running and that you have a valid token.
+                  </p>
+                </div>
+              ) : (
+                <pre className="p-4 overflow-x-auto bg-gray-700 text-green-300 rounded-lg text-left whitespace-pre-wrap">
+                  {JSON.stringify(dataFromBackend, null, 2)}
+                </pre>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center">
+            <p className="text-lg mb-4">You are not signed in.</p>
+            <button
+              onClick={() => signIn("azure-ad")}
+              className="w-full px-6 py-3 font-semibold rounded-lg text-gray-900 transition-colors duration-200 bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            >
+              Sign in with Azure AD
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
